@@ -150,6 +150,13 @@ def create_placeholder_image(path, text):
 def reformat_file(cmd, file_path, org_dir, options):
 
     filename = os.path.split(file_path)[-1]
+    tmp = os.path.splitext(filename)
+    filename_we = tmp[0]
+    ext = tmp[1][1:]
+
+    if ext.lower() not in ALL_FORMATS:
+        error('✗ {}: FAILED: invalid file extension: "{}". Nothing done... '.format(file_path, ext))
+        return -1
 
     if filename.endswith(PHOTON_PLACEHOLDER):
         if cmd == 'mv':
@@ -163,15 +170,14 @@ def reformat_file(cmd, file_path, org_dir, options):
 
     # Extract datetime of file
     # first try: use file name
-    m = re.match(r'.*?(\d\d\d\d)\D?(\d\d)\D?(\d\d)(\D+)(\d\d)\D?(\d\d)\D?(\d\d).*\..*', filename)
+    pattern = r'.*?(\d\d\d\d)\D?(\d\d)\D?(\d\d)\D+(\d\d)\D?(\d\d)\D?(\d\d).*'
+    m = re.match(pattern, filename_we)
     if not m:    
         # second try: use exif metadata of photo
-        m = re.match(r'(\d\d\d\d)\D?(\d\d)\D?(\d\d)(\D+)(\d\d)\D?(\d\d)\D?(\d\d)',
-            get_exif_datetime(file_path))
+        m = re.match(pattern, get_exif_datetime(file_path))
         if not m:
             # third try: get file modify time from os
-            m = re.match(r'.*?(\d\d\d\d)\D?(\d\d)\D?(\d\d)(\D+)(\d\d)\D?(\d\d)\D?(\d\d).*',
-                str(datetime.fromtimestamp(os.path.getmtime(file_path))))
+            m = re.match(pattern, str(datetime.fromtimestamp(os.path.getmtime(file_path))))
             if not m:
                 error('✗ {}: FAILED: cannot extract datetime from file. Nothing done... '.format(file_path))
                 return -1
@@ -179,15 +185,9 @@ def reformat_file(cmd, file_path, org_dir, options):
     year = int(m.group(1))
     month = int(m.group(2))
     day = int(m.group(3))
-    sep = m.group(4)
-    hour = int(m.group(5))
-    minute = int(m.group(6))
-    second = int(m.group(7))
-    ext = os.path.splitext(filename)[1][1:]
-
-    if ext.lower() not in ALL_FORMATS:
-        error('✗ {}: FAILED: invalid file extension: "{}". Nothing done... '.format(file_path, ext))
-        return -1
+    hour = int(m.group(4))
+    minute = int(m.group(5))
+    second = int(m.group(6))
 
     if options['jalali'] and year > 1900:
         # convert to Persian date
