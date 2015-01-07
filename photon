@@ -48,15 +48,9 @@ Example Usage:
         photon mv new_photos organized_photos
 
 Warning:
-    
-    This program recursively RENAMES and (when used with "mv" command) MOVES files
-    located in TARGET, and uses the pattern specified by --pattern for
-    new file names. So, if you have a photo named "important-20140705-154547.jpg",
-    its name changes to something like "2014-07-05 15:45:47.jpg" and the
-    "important" part is removed from file name.
 
-    If you are not sure about what will happen, first use --dry-run flag, and if
-    everything was ok, then run the command without --dry-run.
+    If you are not sure about what will happen after running the command, first use
+    --dry-run flag, and if everything was ok, then run the command without --dry-run.
 
 '''
 
@@ -83,13 +77,18 @@ def get_exif_datetime(fn):
 EN_DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 FA_DIGITS = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
 
-DEFAULT_PATTERN = "{y}-{m}-{d} {h}:{mi}:{s}"
+MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+FA_MONTH_NAMES = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند']
+
+DEFAULT_PATTERN = "{y}/{m} - {M}/{original_name}"
+EXAMPLE_PATTERN = "{y}/{m} - {M}/{y}-{m}-{d} {h}:{mi}:{s}"
 
 PHOTON_PLACEHOLDER = ' PHOTON-VIDEO-PLACEHOLDER.jpg'
 
 VIDEO_FORMATS = ['mp4', 'avi', '3gp', 'mpeg', 'mkv', 'wmv', ]
 IMAGE_FORMATS = ['jpg', 'jpeg', 'png', ]
 ALL_FORMATS = VIDEO_FORMATS + IMAGE_FORMATS
+
 
 class Color:
     PURPLE = '\033[95m'
@@ -122,6 +121,7 @@ def fa_chars(s):
         s = re.sub(EN_DIGITS[i], FA_DIGITS[i], s)
     return s
 
+
 def en_chars(s):
     s = str(s)
     for i in range(10):
@@ -137,12 +137,13 @@ def pad(n, k):
         n = '0' + n
     return n
 
+
 def create_placeholder_image(path, text):
     image = Image.new("RGBA", (600,450), (245,245,245))
     draw = ImageDraw.Draw(image)
     font = ImageFont.truetype(os.path.join(photon_dir, "font/Hasklig-Light.otf"), 40)
     draw.text((160, 150), "Video Here", (10,10,10), font=font)
-    draw.text((70, 200), text, (10,10,10), font=font)
+    draw.text((20, 200), text, (10,10,10), font=font)
     # img_resized = image.resize((188,45), Image.ANTIALIAS)
     image.save(path, "JPEG")
 
@@ -150,9 +151,8 @@ def create_placeholder_image(path, text):
 def reformat_file(cmd, file_path, org_dir, options):
 
     filename = os.path.split(file_path)[-1]
-    tmp = os.path.splitext(filename)
-    filename_we = tmp[0]
-    ext = tmp[1][1:]
+    filename_we, ext = os.path.splitext(filename)
+    ext = ext[1:]
 
     if ext.lower() not in ALL_FORMATS:
         error('✗ {}: FAILED: invalid file extension: "{}". Nothing done... '.format(file_path, ext))
@@ -192,6 +192,8 @@ def reformat_file(cmd, file_path, org_dir, options):
         # convert to Persian date
         year, month, day = jalali_py.Gregorian(year, month, day).persian_tuple()
 
+    month_name = FA_MONTH_NAMES[month-1] if options['jalali'] else MONTH_NAMES[month-1]
+
     year = pad(year, 4)
     month = pad(month, 2)
     day = pad(day, 2)
@@ -207,33 +209,36 @@ def reformat_file(cmd, file_path, org_dir, options):
         minute = fa_chars(minute)
         second = fa_chars(second)
 
-    new_filename_we = options['pattern'].format(
+    relative_filepath_we = options['pattern'].format(
         y=year,
         m=month,
+        M=month_name,
         d=day,
         h=hour,
         mi=minute,
         s=second,
+        original_name=filename_we
     )
 
-    new_dir = os.path.join(org_dir, year+'-'+month)
-
-    if file_path != os.path.join(new_dir, new_filename_we + '.' + ext):
+    if file_path != os.path.join(org_dir, relative_filepath_we + '.' + ext):
         un = ''
         uni = 1
-        while os.path.exists(os.path.join(new_dir, new_filename_we + un + '.' + ext)):
+        while os.path.exists(os.path.join(org_dir, relative_filepath_we + un + '.' + ext)):
             un = '-' + str(uni)
             uni += 1
-        new_filename_we += un
+        relative_filepath_we += un
 
-    new_filename = new_filename_we + '.' + ext
-    new_filepath = os.path.join(new_dir, new_filename)
+    new_filepath = os.path.join(org_dir, relative_filepath_we + '.' + ext)
+    new_dir, new_filename = os.path.split(new_filepath)
 
     try:
         if new_filepath != file_path:
             if not os.path.exists(new_dir):
                 if not options['dry_run']:
-                    os.mkdir(new_dir, mode=0o755)
+                    os.makedirs(new_dir, mode=0o755, exist_ok=True)
+                    info('✔ Directory {} created'.format(new_dir))
+                else:
+                    info('✔ [DRY-RUN] Directory {} will be created'.format(new_dir))
             if cmd == 'mv':
                 if not options['dry_run']:
                     os.rename(file_path, new_filepath)
@@ -250,10 +255,10 @@ def reformat_file(cmd, file_path, org_dir, options):
                 error("Wrong command. (This never happens.)")
                 return
         if ext.lower() in VIDEO_FORMATS:
-            placeholder_path = os.path.join(new_dir, new_filename_we + PHOTON_PLACEHOLDER)
+            placeholder_path = os.path.join(org_dir, relative_filepath_we + PHOTON_PLACEHOLDER)
             if not os.path.exists(placeholder_path):
                 if not options['dry_run']:
-                    create_placeholder_image(placeholder_path, en_chars(new_filename_we))
+                    create_placeholder_image(placeholder_path, en_chars(new_filename))
                     info2('✔ {} created'.format(placeholder_path))
                 else:
                     info2('✔ [DRY-RUN] {} will be created'.format(placeholder_path))
@@ -280,7 +285,7 @@ def main():
     parser.add_argument('--dry-run', dest='dry_run', action='store_true', help="do not copy or move files. just print what will happen")
     parser.add_argument('--pattern', metavar="PATTERN", dest='pattern', nargs='?',
         default=DEFAULT_PATTERN,
-        help="use PATTERN for file names\ndefault: {}".format(DEFAULT_PATTERN))
+        help="use PATTERN for file paths\ndefault: \"{}\"\nexample: \"{}\"".format(DEFAULT_PATTERN, EXAMPLE_PATTERN))
     parser.add_argument('cmd', metavar='CMD', choices=['mv', 'cp'], help="{mv,cp}\nmv: move files to ORG_DIR\ncp: copy files to ORG_DIR")
     parser.add_argument('target', metavar="TARGET", default=".", help="file or folder to be organized")
     parser.add_argument('org_dir', metavar="ORG_DIR", default=".", help="folder to save organized files")
