@@ -1,0 +1,299 @@
+#!/usr/bin/env python3
+
+#    Photon
+#    Copyright (C) 2015  Mohammad Javad Naderi <mjnaderi@gmail.com>
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+'''Organize photos and videos by date in folders.
+
+This program is a simple tool for organizing photos and videos
+in folders. It extracts date and time of photos and videos (from
+filename, or image attributes, or file modification time) and
+classifies them in folders (one folder for each month).
+
+Example Usage:
+
+    Add
+        alias photon="python3 PATH/TO/photon"
+    to your .bashrc
+
+    Suppose your directory structure is like this:
+    (organized_photos is empty at the beginning.)
+    .
+    ├─ organized_photos
+    ├─ new_photos
+    └─ ...
+    For adding new photos (photos in new_photos folder) to your
+    organized photos, run:
+        photon cp new_photos organized_photos
+
+Warning:
+    
+    This program RENAMES and (with "mv" command) MOVES files located in TARGET, and uses
+    the pattern specified by --pattern for new file names. So, if you have a photo
+    named "important-20140705-154547.jpg", its name changes to something like
+    "2014-07-05 15:45:47.jpg" and the "important" part is removed from file name.
+
+    If you are not sure about what will happen, first use --dry flag, and if everything
+    was ok, then run the command without --dry.
+
+'''
+
+import sys
+import os
+import shutil
+import re
+import jalali as jalali_py
+import argparse
+from pprint import pprint
+from PIL import Image, ImageDraw, ImageFont
+from PIL.ExifTags import TAGS
+from datetime import datetime
+
+photon_dir = os.path.dirname(__file__)
+
+# source: http://www.blog.pythonlibrary.org/2010/03/28/getting-photo-metadata-exif-using-python/
+def get_exif_datetime(fn):
+    try:
+        i = Image.open(fn)
+    except OSError:
+        return ''
+    return i._getexif().get(36867, '')
+
+EN_DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+FA_DIGITS = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
+
+DEFAULT_PATTERN = "{y}-{m}-{d} {h}:{mi}:{s}"
+
+PHOTON_PLACEHOLDER = ' PHOTON-VIDEO-PLACEHOLDER.jpg'
+
+VIDEO_FORMATS = ['mp4', 'avi', '3gp', 'mpeg', 'mkv', 'wmv', ]
+
+class Color:
+    PURPLE = '\033[95m'
+    CYAN = '\033[96m'
+    DARKCYAN = '\033[36m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    END = '\033[0m'
+
+
+def error(msg):
+    print(Color.RED + msg + Color.END)
+
+
+def info(msg):
+    print(Color.BLUE + msg + Color.END)
+
+
+def info2(msg):
+    print(Color.PURPLE + msg + Color.END)
+
+
+def fa_chars(s):
+    s = str(s)
+    for i in range(10):
+        s = re.sub(EN_DIGITS[i], FA_DIGITS[i], s)
+    return s
+
+def en_chars(s):
+    s = str(s)
+    for i in range(10):
+        s = re.sub(FA_DIGITS[i], EN_DIGITS[i], s)
+    return s
+
+
+def pad(n, k):
+    n = str(n)
+    if len(n) >= k:
+        return n[:k]
+    while len(n) < k:
+        n = '0' + n
+    return n
+
+def create_placeholder_image(path, text):
+    image = Image.new("RGBA", (600,450), (245,245,245))
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.truetype(os.path.join(photon_dir, "font/Hasklig-Light.otf"), 40)
+    draw.text((160, 150), "Video Here", (10,10,10), font=font)
+    draw.text((70, 200), text, (10,10,10), font=font)
+    # img_resized = image.resize((188,45), Image.ANTIALIAS)
+    image.save(path, "JPEG")
+
+
+def reformat_file(cmd, file_path, org_dir, options):
+
+    filename = os.path.split(file_path)[-1]
+
+    if filename.endswith(PHOTON_PLACEHOLDER):
+        if cmd == 'mv':
+            if not options['dry']:
+                os.remove(file_path)
+                info2('✔ {} removed'.format(file_path))
+            else:
+                info2('✔ [DRY] {} will be removed'.format(file_path))
+
+        return 0
+
+    # Extract datetime of file
+    # first try: use file name
+    m = re.match(r'.*?(\d\d\d\d)\D?(\d\d)\D?(\d\d)(\D+)(\d\d)\D?(\d\d)\D?(\d\d).*\..*', filename)
+    if not m:    
+        # second try: use exif metadata of photo
+        m = re.match(r'(\d\d\d\d)\D?(\d\d)\D?(\d\d)(\D+)(\d\d)\D?(\d\d)\D?(\d\d)',
+            get_exif_datetime(file_path))
+        if not m:
+            # third try: get file modify time from os
+            m = re.match(r'.*?(\d\d\d\d)\D?(\d\d)\D?(\d\d)(\D+)(\d\d)\D?(\d\d)\D?(\d\d).*',
+                str(datetime.fromtimestamp(os.path.getmtime(file_path))))
+            if not m:
+                error('✗ {}: FAILED: cannot extract datetime from file... '.format(file_path))
+                return -1
+
+    year = int(m.group(1))
+    month = int(m.group(2))
+    day = int(m.group(3))
+    sep = m.group(4)
+    hour = int(m.group(5))
+    minute = int(m.group(6))
+    second = int(m.group(7))
+    ext = os.path.splitext(filename)[1][1:]
+
+    if options['jalali'] and year > 1900:
+        # convert to Persian date
+        year, month, day = jalali_py.Gregorian(year, month, day).persian_tuple()
+
+    year = pad(year, 4)
+    month = pad(month, 2)
+    day = pad(day, 2)
+    hour = pad(hour, 2)
+    minute = pad(minute, 2)
+    second = pad(second, 2)
+
+    if options['chars'] == 'fa':
+        year = fa_chars(year)
+        month = fa_chars(month)
+        day = fa_chars(day)
+        hour = fa_chars(hour)
+        minute = fa_chars(minute)
+        second = fa_chars(second)
+
+    new_filename_we = options['pattern'].format(
+        y=year,
+        m=month,
+        d=day,
+        h=hour,
+        mi=minute,
+        s=second,
+    )
+
+    new_dir = os.path.join(org_dir, year+'-'+month)
+
+    if file_path != os.path.join(new_dir, new_filename_we + '.' + ext):
+        un = ''
+        uni = 1
+        while os.path.exists(os.path.join(new_dir, new_filename_we + un + '.' + ext)):
+            un = '-' + str(uni)
+            uni += 1
+        new_filename_we += un
+
+    new_filename = new_filename_we + '.' + ext
+    new_filepath = os.path.join(new_dir, new_filename)
+
+    try:
+        if new_filepath != file_path:
+            if not os.path.exists(new_dir):
+                if not options['dry']:
+                    os.mkdir(new_dir, mode=0o755)
+            if cmd == 'mv':
+                if not options['dry']:
+                    os.rename(file_path, new_filepath)
+                    info('✔ {} moved to {}'.format(file_path, new_filepath))
+                else:
+                    info('✔ [DRY] {} will be moved to {}'.format(file_path, new_filepath))
+            elif cmd == 'cp':
+                if not options['dry']:
+                    shutil.copy2(file_path, new_filepath)
+                    info('✔ {} copied to {}'.format(file_path, new_filepath))
+                else:
+                    info('✔ [DRY] {} will be copied to {}'.format(file_path, new_filepath))
+            else:
+                error("Wrong command. (This never happens.)")
+                return -1
+        if ext.lower() in VIDEO_FORMATS:
+            placeholder_path = os.path.join(new_dir, new_filename_we + PHOTON_PLACEHOLDER)
+            if not os.path.exists(placeholder_path):
+                if not options['dry']:
+                    create_placeholder_image(placeholder_path, en_chars(new_filename_we))
+                    info2('✔ {} created'.format(placeholder_path))
+                else:
+                    info2('✔ [DRY] {} will be created'.format(placeholder_path))
+    except PermissionError:
+        error('✗ {}: FAILED: Permission Denied'.format(file_path))
+        return -1
+        
+    return 0
+
+
+def reformat_dir(cmd, path, org_dir, options):
+
+    if os.path.isfile(path):
+        return reformat_file(cmd, path, org_dir, options)
+
+    if os.path.isdir(path):
+        files = os.listdir(path)
+        for f in files:
+            reformat_dir(cmd, os.path.join(path, f), org_dir, options)
+        return 0
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('--jalali', dest='jalali', action='store_true', help="convert dates to Persian (use Persian dates in organized file names)")
+    parser.add_argument('--chars', dest='chars', default='en', choices=['fa', 'en'], help="use Fa/En characters for digits in file names (default: en)")
+    parser.add_argument('--dry', dest='dry', action='store_true', help="do not copy or move files. just print what will happen")
+    parser.add_argument('--pattern', metavar="PATTERN", dest='pattern', nargs='?',
+        default=DEFAULT_PATTERN,
+        help="use PATTERN for file names\ndefault: {}".format(DEFAULT_PATTERN))
+    parser.add_argument('cmd', metavar='CMD', choices=['mv', 'cp'], help="{mv,cp}\nmv: move files to ORG_DIR\ncp: copy files to ORG_DIR")
+    parser.add_argument('target', metavar="TARGET", default=".", help="file or folder to be organized")
+    parser.add_argument('org_dir', metavar="ORG_DIR", default=".", help="folder to save organized files")
+    
+    args = parser.parse_args()
+
+    if not os.path.exists(args.target):
+        error('Target ({}) does not exist'.format(args.target))
+        return -1
+
+    if not os.path.exists(args.org_dir):
+        error('Organize path ({}) does not exist'.format(args.org_dir))
+        return -1
+
+    options = {
+        'jalali': args.jalali,
+        'chars': args.chars,
+        'dry': args.dry,
+        'pattern': args.pattern,
+    }
+
+    reformat_dir(args.cmd, args.target, args.org_dir, options)
+
+
+if __name__ == '__main__':
+    main()
