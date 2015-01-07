@@ -94,7 +94,7 @@ Getting Started
 ---------------
 
     IMPORTANT NOTE
-    
+
     If you are not sure about what will happen after running the command, first use
     --dry-run flag, and if everything was ok, then run the command without --dry-run.
 
@@ -150,6 +150,7 @@ Todo
 ----
 
 * Write tests
+* Improve extracting datetime from photos and videos
 
 
 Want to contribute?
