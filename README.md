@@ -78,8 +78,8 @@ organized photos, run:
 
     photon cp new_photos organized_photos
 
-The above command copies files from `new_photos` to `organized_photos`.
-If you want to move files instead of copying, run:
+The above command **recursively** copies files from `new_photos` to `organized_photos`.
+If you want to recursively move files instead of copying, run:
 
     photon mv new_photos organized_photos
 

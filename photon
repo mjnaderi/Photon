@@ -66,7 +66,6 @@ import shutil
 import re
 import jalali as jalali_py
 import argparse
-from pprint import pprint
 from PIL import Image, ImageDraw, ImageFont
 from PIL.ExifTags import TAGS
 from datetime import datetime
@@ -79,7 +78,7 @@ def get_exif_datetime(fn):
         i = Image.open(fn)
     except OSError:
         return ''
-    return i._getexif().get(36867, '')
+    return i._getexif().get(0x9003, '')  # DateTimeOriginal
 
 EN_DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 FA_DIGITS = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
