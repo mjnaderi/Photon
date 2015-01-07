@@ -123,7 +123,7 @@ Todo
 ----
 
 * Write tests
-* Add other folder structures for organizing (e.g. YEAD/MONTH/ instead of YEAR-MONTH/)
+* Add other folder structures for organizing (e.g. `YEAD/MONTH/` instead of `YEAR-MONTH/`)
 
 
 Want to contribute?
