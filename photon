@@ -16,12 +16,14 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-'''Organize photos and videos by date in folders.
+'''Organize your photos and videos by date in folders.
 
-This program is a simple tool for organizing photos and videos
-in folders. It extracts date and time of photos and videos (from
-filename, or image attributes, or file modification time) and
-classifies them in folders (one folder for each month).
+Photon is a simple command line tool for organizing photos and
+videos in folders, and putting all photos and videos taken with
+different cameras in one place ordered by time. It extracts date
+and time of photos and videos (from filename, or image attributes,
+or file modification time) and classifies them in folders (one
+folder for each month).
 
 Example Usage:
 
@@ -37,17 +39,24 @@ Example Usage:
     └─ ...
     For adding new photos (photos in new_photos folder) to your
     organized photos, run:
+
         photon cp new_photos organized_photos
+    
+    The above command copies files from `new_photos` to `organized_photos`.
+    If you want to move files instead of copying, run:
+
+        photon mv new_photos organized_photos
 
 Warning:
     
-    This program RENAMES and (with "mv" command) MOVES files located in TARGET, and uses
-    the pattern specified by --pattern for new file names. So, if you have a photo
-    named "important-20140705-154547.jpg", its name changes to something like
-    "2014-07-05 15:45:47.jpg" and the "important" part is removed from file name.
+    This program recursively RENAMES and (when used with "mv" command) MOVES files
+    located in TARGET, and uses the pattern specified by --pattern for
+    new file names. So, if you have a photo named "important-20140705-154547.jpg",
+    its name changes to something like "2014-07-05 15:45:47.jpg" and the
+    "important" part is removed from file name.
 
-    If you are not sure about what will happen, first use --dry flag, and if everything
-    was ok, then run the command without --dry.
+    If you are not sure about what will happen, first use --dry-run flag, and if
+    everything was ok, then run the command without --dry-run.
 
 '''
 
@@ -80,6 +89,8 @@ DEFAULT_PATTERN = "{y}-{m}-{d} {h}:{mi}:{s}"
 PHOTON_PLACEHOLDER = ' PHOTON-VIDEO-PLACEHOLDER.jpg'
 
 VIDEO_FORMATS = ['mp4', 'avi', '3gp', 'mpeg', 'mkv', 'wmv', ]
+IMAGE_FORMATS = ['jpg', 'jpeg', 'png', ]
+ALL_FORMATS = VIDEO_FORMATS + IMAGE_FORMATS
 
 class Color:
     PURPLE = '\033[95m'
@@ -143,11 +154,11 @@ def reformat_file(cmd, file_path, org_dir, options):
 
     if filename.endswith(PHOTON_PLACEHOLDER):
         if cmd == 'mv':
-            if not options['dry']:
+            if not options['dry_run']:
                 os.remove(file_path)
                 info2('✔ {} removed'.format(file_path))
             else:
-                info2('✔ [DRY] {} will be removed'.format(file_path))
+                info2('✔ [DRY-RUN] {} will be removed'.format(file_path))
 
         return 0
 
@@ -163,7 +174,7 @@ def reformat_file(cmd, file_path, org_dir, options):
             m = re.match(r'.*?(\d\d\d\d)\D?(\d\d)\D?(\d\d)(\D+)(\d\d)\D?(\d\d)\D?(\d\d).*',
                 str(datetime.fromtimestamp(os.path.getmtime(file_path))))
             if not m:
-                error('✗ {}: FAILED: cannot extract datetime from file... '.format(file_path))
+                error('✗ {}: FAILED: cannot extract datetime from file. Nothing done... '.format(file_path))
                 return -1
 
     year = int(m.group(1))
@@ -174,6 +185,10 @@ def reformat_file(cmd, file_path, org_dir, options):
     minute = int(m.group(6))
     second = int(m.group(7))
     ext = os.path.splitext(filename)[1][1:]
+
+    if ext.lower() not in ALL_FORMATS:
+        error('✗ {}: FAILED: invalid file extension: "{}". Nothing done... '.format(file_path, ext))
+        return -1
 
     if options['jalali'] and year > 1900:
         # convert to Persian date
@@ -219,31 +234,31 @@ def reformat_file(cmd, file_path, org_dir, options):
     try:
         if new_filepath != file_path:
             if not os.path.exists(new_dir):
-                if not options['dry']:
+                if not options['dry_run']:
                     os.mkdir(new_dir, mode=0o755)
             if cmd == 'mv':
-                if not options['dry']:
+                if not options['dry_run']:
                     os.rename(file_path, new_filepath)
                     info('✔ {} moved to {}'.format(file_path, new_filepath))
                 else:
-                    info('✔ [DRY] {} will be moved to {}'.format(file_path, new_filepath))
+                    info('✔ [DRY-RUN] {} will be moved to {}'.format(file_path, new_filepath))
             elif cmd == 'cp':
-                if not options['dry']:
+                if not options['dry_run']:
                     shutil.copy2(file_path, new_filepath)
                     info('✔ {} copied to {}'.format(file_path, new_filepath))
                 else:
-                    info('✔ [DRY] {} will be copied to {}'.format(file_path, new_filepath))
+                    info('✔ [DRY-RUN] {} will be copied to {}'.format(file_path, new_filepath))
             else:
                 error("Wrong command. (This never happens.)")
                 return -1
         if ext.lower() in VIDEO_FORMATS:
             placeholder_path = os.path.join(new_dir, new_filename_we + PHOTON_PLACEHOLDER)
             if not os.path.exists(placeholder_path):
-                if not options['dry']:
+                if not options['dry_run']:
                     create_placeholder_image(placeholder_path, en_chars(new_filename_we))
                     info2('✔ {} created'.format(placeholder_path))
                 else:
-                    info2('✔ [DRY] {} will be created'.format(placeholder_path))
+                    info2('✔ [DRY-RUN] {} will be created'.format(placeholder_path))
     except PermissionError:
         error('✗ {}: FAILED: Permission Denied'.format(file_path))
         return -1
@@ -267,7 +282,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--jalali', dest='jalali', action='store_true', help="convert dates to Persian (use Persian dates in organized file names)")
     parser.add_argument('--chars', dest='chars', default='en', choices=['fa', 'en'], help="use Fa/En characters for digits in file names (default: en)")
-    parser.add_argument('--dry', dest='dry', action='store_true', help="do not copy or move files. just print what will happen")
+    parser.add_argument('--dry-run', dest='dry_run', action='store_true', help="do not copy or move files. just print what will happen")
     parser.add_argument('--pattern', metavar="PATTERN", dest='pattern', nargs='?',
         default=DEFAULT_PATTERN,
         help="use PATTERN for file names\ndefault: {}".format(DEFAULT_PATTERN))
@@ -288,7 +303,7 @@ def main():
     options = {
         'jalali': args.jalali,
         'chars': args.chars,
-        'dry': args.dry,
+        'dry_run': args.dry_run,
         'pattern': args.pattern,
     }
 
