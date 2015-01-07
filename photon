@@ -156,7 +156,7 @@ def reformat_file(cmd, file_path, org_dir, options):
 
     if ext.lower() not in ALL_FORMATS:
         error('✗ {}: FAILED: invalid file extension: "{}". Nothing done... '.format(file_path, ext))
-        return -1
+        return
 
     if filename.endswith(PHOTON_PLACEHOLDER):
         if cmd == 'mv':
@@ -165,8 +165,7 @@ def reformat_file(cmd, file_path, org_dir, options):
                 info2('✔ {} removed'.format(file_path))
             else:
                 info2('✔ [DRY-RUN] {} will be removed'.format(file_path))
-
-        return 0
+        return
 
     # Extract datetime of file
     # first try: use file name
@@ -180,7 +179,7 @@ def reformat_file(cmd, file_path, org_dir, options):
             m = re.match(pattern, str(datetime.fromtimestamp(os.path.getmtime(file_path))))
             if not m:
                 error('✗ {}: FAILED: cannot extract datetime from file. Nothing done... '.format(file_path))
-                return -1
+                return
 
     year = int(m.group(1))
     month = int(m.group(2))
@@ -249,7 +248,7 @@ def reformat_file(cmd, file_path, org_dir, options):
                     info('✔ [DRY-RUN] {} will be copied to {}'.format(file_path, new_filepath))
             else:
                 error("Wrong command. (This never happens.)")
-                return -1
+                return
         if ext.lower() in VIDEO_FORMATS:
             placeholder_path = os.path.join(new_dir, new_filename_we + PHOTON_PLACEHOLDER)
             if not os.path.exists(placeholder_path):
@@ -260,9 +259,7 @@ def reformat_file(cmd, file_path, org_dir, options):
                     info2('✔ [DRY-RUN] {} will be created'.format(placeholder_path))
     except PermissionError:
         error('✗ {}: FAILED: Permission Denied'.format(file_path))
-        return -1
-        
-    return 0
+        return
 
 
 def reformat_dir(cmd, path, org_dir, options):
@@ -274,7 +271,6 @@ def reformat_dir(cmd, path, org_dir, options):
         files = os.listdir(path)
         for f in files:
             reformat_dir(cmd, os.path.join(path, f), org_dir, options)
-        return 0
 
 
 def main():
@@ -293,11 +289,11 @@ def main():
 
     if not os.path.exists(args.target):
         error('Target ({}) does not exist'.format(args.target))
-        return -1
+        return
 
     if not os.path.exists(args.org_dir):
         error('Organize path ({}) does not exist'.format(args.org_dir))
-        return -1
+        return
 
     options = {
         'jalali': args.jalali,
