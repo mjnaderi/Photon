@@ -1,16 +1,11 @@
 Photon
 ======
 
-Organize your photos and videos by date in folders.
+Photon is a simple command line program for organizing digital photos and videos in folders, and putting all photos and videos from different cameras in one organized folder. It extracts date and time of photos and videos (from filename, or image attributes, or file modification time) and classifies them in folders.
 
-Photon is a simple command line tool for organizing photos and
-videos in folders, and putting all photos and videos taken with
-different cameras in one organized folder. It extracts date
-and time of photos and videos (from filename, or image attributes,
-or file modification time) and classifies them in folders (one
-folder for each month).
+You can specifiy how to organize photos using `--pattern` flag. By default, Photon uses `{y}/{m} - {M}/{original_name}` pattern.
 
-Photon organizes this:
+Suppose that we have this directory structure:
 
     new_photos/
     ├── 2014-12-17-224924.jpg
@@ -23,25 +18,25 @@ Photon organizes this:
     │   └── Screenshot from 2015-01-07 12:33:24.png
     └── VID 2014-10-24-211429.mp4
 
-like this:
+Using default pattern, the result is:
 
     organized_photos/
     ├── 2014
-    │   ├── Oct
+    │   ├── 10 - Oct
     │   │   ├── IMG 2014-10-24-211327.jpg
     │   │   ├── VID 2014-10-24-211429.mp4
     │   │   └── VID 2014-10-24-211429 PHOTON-VIDEO-PLACEHOLDER.jpg
-    │   └── Dec
+    │   └── 12 - Dec
     │       ├── 2014-12-17-224924.jpg
     │       ├── Screenshot from 2014-12-30 20:43:02.png
     │       └── Screenshot from 2014-12-30 20:46:25.png
     └── 2015
-        └── Jan
+        └── 01 - Jan
             ├── 2015-01-03-134015.jpg
             ├── 2015-01-03-134031.jpg
             └── Screenshot from 2015-01-07 12:33:24.png
 
-or like this:
+Using `{y}/{m}/{d}/{h}:{mi}:{s}` pattern we have:
 
     organized_photos/
     ├── 2014
@@ -64,19 +59,18 @@ or like this:
             └── 07
                 └── 12:33:24.png
 
-or ...
+And so many other patterns are possible. You can use `{y}`, `{m}`, `{M}`, `{d}`, `{h}`, `{mi}`, `{s}`, `{original_name}` in pattern.
 
-
-Why?
-----
-
-I needed a simple tool for organizing photos taken by camera,
-and sorting all photos taken with different cameras in one place
-ordered by time. The simplest approach for organizing was using
-folders. Also, there wasn't any photo organizer app for linux which
-could organize photos using Persian calendar (Maybe there is a way
-to do it in KDE, but I don't use KDE.) So I wrote this simple
-Python 3 script.
+|     | Description | Example |
+| --- | ----------- | ------- |
+| `{y}` | Year | `2015` |
+| `{m}` | Month | `12` |
+| `{M}` | Month | `Dec` |
+| `{d}` | Day | `31` |
+| `{h}` | Hours | `23` |
+| `{mi}` | Minutes | `59` |
+| `{s}` | Seconds | `59` |
+| `{original_name}` | Original File Name | `IMG 2014-10-24-211327` |
 
 
 Installation
@@ -95,8 +89,9 @@ Getting Started
 
     IMPORTANT NOTE
 
-    If you are not sure about what will happen after running the command, first use
-    --dry-run flag, and if everything was ok, then run the command without --dry-run.
+    If you are not sure about what will happen after running
+    the command, first use --dry-run flag, and if everything
+    was ok, then run the command without --dry-run.
 
 Suppose your directory structure is like this
 (`organized_photos` is the directory containing your old photos organized by Photon.)
@@ -145,10 +140,21 @@ Usage
                            default: "{y}/{m} - {M}/{original_name}"
                            example: "{y}/{m} - {M}/{y}-{m}-{d} {h}:{mi}:{s}"
 
+Why?
+----
+
+I needed a simple tool for organizing photos taken by camera,
+and sorting all photos taken with different cameras in one place
+ordered by time. The simplest approach for organizing was using
+folders. Also, there wasn't any photo organizer app for linux which
+could organize photos using Persian calendar (Maybe there is a way
+to do it in KDE, but I don't use KDE.) So I wrote this simple
+Python 3 script.
 
 Todo
 ----
 
+* Change name of `TARGET` to `SOURCE`.
 * Write tests
 * Improve extracting datetime from photos and videos
 
