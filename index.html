@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="description" content="Photon : Simple command line program for organizing your digital photos and videos in folders">
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Photon</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/mjnaderi/Photon">View on GitHub</a>
+
+          <h1 id="project_title">Photon</h1>
+          <h2 id="project_tagline">Simple command line program for organizing your digital photos and videos in folders</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/mjnaderi/Photon/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/mjnaderi/Photon/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h1>
+<a id="photon" class="anchor" href="#photon" aria-hidden="true"><span class="octicon octicon-link"></span></a>Photon</h1>
+
+<p>Photon is a simple command line program for organizing digital photos and videos in folders, and putting all photos and videos from different cameras in one organized folder. It extracts date and time of photos and videos (from filename, or image attributes, or file modification time) and classifies them in folders.</p>
+
+<p>You can specifiy how to organize photos using <code>--pattern</code> flag. By default, Photon uses <code>{y}/{m} - {M}/{original_name}</code> pattern.</p>
+
+<p>Suppose that we have this directory structure:</p>
+
+<pre><code>new_photos/
+├── 2014-12-17-224924.jpg
+├── 2015-01-03-134015.jpg
+├── 2015-01-03-134031.jpg
+├── IMG 2014-10-24-211327.jpg
+├── screenshots
+│   ├── Screenshot from 2014-12-30 20:43:02.png
+│   ├── Screenshot from 2014-12-30 20:46:25.png
+│   └── Screenshot from 2015-01-07 12:33:24.png
+└── VID 2014-10-24-211429.mp4
+</code></pre>
+
+<p>Using default pattern, the result is:</p>
+
+<pre><code>organized_photos/
+├── 2014
+│   ├── 10 - Oct
+│   │   ├── IMG 2014-10-24-211327.jpg
+│   │   ├── VID 2014-10-24-211429.mp4
+│   │   └── VID 2014-10-24-211429 PHOTON-VIDEO-PLACEHOLDER.jpg
+│   └── 12 - Dec
+│       ├── 2014-12-17-224924.jpg
+│       ├── Screenshot from 2014-12-30 20:43:02.png
+│       └── Screenshot from 2014-12-30 20:46:25.png
+└── 2015
+    └── 01 - Jan
+        ├── 2015-01-03-134015.jpg
+        ├── 2015-01-03-134031.jpg
+        └── Screenshot from 2015-01-07 12:33:24.png
+</code></pre>
+
+<p>Using <code>{y}/{m}/{d}/{h}:{mi}:{s}</code> pattern we have:</p>
+
+<pre><code>organized_photos/
+├── 2014
+│   ├── 10
+│   │   └── 24
+│   │       ├── 21:13:27.jpg
+│   │       ├── 21:14:29.mp4
+│   │       └── 21:14:29 PHOTON-VIDEO-PLACEHOLDER.jpg
+│   └── 12
+│       ├── 17
+│       │   └── 22:49:24.jpg
+│       └── 30
+│           ├── 20:43:02.png
+│           └── 20:46:25.png
+└── 2015
+    └── 01
+        ├── 03
+        │   ├── 13:40:15.jpg
+        │   └── 13:40:31.jpg
+        └── 07
+            └── 12:33:24.png
+</code></pre>
+
+<p>And so many other patterns are possible. You can use <code>{y}</code>, <code>{m}</code>, <code>{M}</code>, <code>{d}</code>, <code>{h}</code>, <code>{mi}</code>, <code>{s}</code>, <code>{original_name}</code> in pattern.</p>
+
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{y}</code></td>
+<td>Year</td>
+<td><code>2015</code></td>
+</tr>
+<tr>
+<td><code>{m}</code></td>
+<td>Month</td>
+<td><code>12</code></td>
+</tr>
+<tr>
+<td><code>{M}</code></td>
+<td>Month</td>
+<td><code>Dec</code></td>
+</tr>
+<tr>
+<td><code>{d}</code></td>
+<td>Day</td>
+<td><code>31</code></td>
+</tr>
+<tr>
+<td><code>{h}</code></td>
+<td>Hours</td>
+<td><code>23</code></td>
+</tr>
+<tr>
+<td><code>{mi}</code></td>
+<td>Minutes</td>
+<td><code>59</code></td>
+</tr>
+<tr>
+<td><code>{s}</code></td>
+<td>Seconds</td>
+<td><code>59</code></td>
+</tr>
+<tr>
+<td><code>{original_name}</code></td>
+<td>Original File Name</td>
+<td><code>IMG 2014-10-24-211327</code></td>
+</tr>
+</tbody>
+</table>
+
+<h2>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installation</h2>
+
+<p>Photon needs <code>Pillow</code> Python library. After installing <code>Pillow</code>, add following line to your <code>~/.bashrc</code> file.</p>
+
+<div class="highlight highlight-bash"><pre><span class="pl-s3">alias</span> photon=<span class="pl-s1"><span class="pl-pds">"</span>python3 PATH/TO/photon<span class="pl-pds">"</span></span></pre></div>
+
+<h2>
+<a id="getting-started" class="anchor" href="#getting-started" aria-hidden="true"><span class="octicon octicon-link"></span></a>Getting Started</h2>
+
+<pre><code>IMPORTANT NOTE
+
+If you are not sure about what will happen after running
+the command, first use --dry-run flag, and if everything
+was ok, then run the command without --dry-run.
+</code></pre>
+
+<p>Suppose your directory structure is like this
+(<code>organized_photos</code> is the directory containing your old photos organized by Photon.)</p>
+
+<pre><code>.
+├─ organized_photos
+├─ new_photos
+└─ ...
+</code></pre>
+
+<p>For adding new photos (photos in <code>new_photos</code> folder) to your
+organized photos, run:</p>
+
+<pre><code>photon cp new_photos organized_photos
+</code></pre>
+
+<p>The above command <strong>recursively copies</strong> files from <code>new_photos</code> to <code>organized_photos</code>.
+If you want to <strong>recursively move</strong> files instead of copying, run:</p>
+
+<pre><code>photon mv new_photos organized_photos
+</code></pre>
+
+<p>Above commands use the default pattern for file paths (<code>{y}/{m} - {M}/{original_name}</code>).
+You can use any pattern you wish. e.g. <code>{y}/{M}/{y}-{m}-{d} {h}:{mi}:{s}</code>. Note that this
+pattern renames file names to <code>{y}-{m}-{d} {h}:{mi}:{s}</code>. I, personally use this command:</p>
+
+<pre><code>photon mv new_photos organized_photos --jalali --chars fa --pattern "{y}/{m} - {M}/{y}-{m}-{d} {h}:{mi}:{s}"
+</code></pre>
+
+<h2>
+<a id="usage" class="anchor" href="#usage" aria-hidden="true"><span class="octicon octicon-link"></span></a>Usage</h2>
+
+<pre><code>usage: photon [-h] [--jalali] [--chars {fa,en}] [--dry-run] [--pattern [PATTERN]]
+              CMD TARGET ORG_DIR
+
+positional arguments:
+  CMD                  {mv,cp}
+                       mv: move files to ORG_DIR
+                       cp: copy files to ORG_DIR
+  TARGET               file or folder to be organized
+  ORG_DIR              folder to save organized files
+
+optional arguments:
+  -h, --help           show this help message and exit
+  --jalali             convert dates to Persian (use Persian dates in organized file names)
+  --chars {fa,en}      use Fa/En characters for digits in file names (default: en)
+  --dry-run            do not copy or move files. just print what will happen
+  --pattern [PATTERN]  use PATTERN for file paths
+                       default: "{y}/{m} - {M}/{original_name}"
+                       example: "{y}/{m} - {M}/{y}-{m}-{d} {h}:{mi}:{s}"
+</code></pre>
+
+<h2>
+<a id="want-to-contribute" class="anchor" href="#want-to-contribute" aria-hidden="true"><span class="octicon octicon-link"></span></a>Want to contribute?</h2>
+
+<p>Feel free to fork Photon and start contributing.</p>
+
+<h2>
+<a id="license" class="anchor" href="#license" aria-hidden="true"><span class="octicon octicon-link"></span></a>License</h2>
+
+<p>Photon is licensed under GNU GPLv3.</p>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Photon maintained by <a href="https://github.com/mjnaderi">mjnaderi</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
