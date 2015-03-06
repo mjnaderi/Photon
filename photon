@@ -52,6 +52,10 @@ Warning:
     If you are not sure about what will happen after running the command, first use
     --dry-run flag, and if everything was ok, then run the command without --dry-run.
 
+I use:
+
+    photon mv --jalali --chars fa --pattern "{y}/{m} - {M}/{y}-{m}-{d} {h}:{mi}:{s}" SRC DES
+
 '''
 
 import sys
@@ -65,6 +69,7 @@ from PIL.ExifTags import TAGS
 from datetime import datetime
 
 photon_dir = os.path.dirname(__file__)
+args = None
 
 # source: http://www.blog.pythonlibrary.org/2010/03/28/getting-photo-metadata-exif-using-python/
 def get_exif_datetime(fn):
@@ -108,11 +113,13 @@ def error(msg):
 
 
 def info(msg):
-    print(Color.BLUE + msg + Color.END)
+    if args.verbose:
+        print(Color.BLUE + msg + Color.END)
 
 
 def info2(msg):
-    print(Color.PURPLE + msg + Color.END)
+    if args.verbose:
+        print(Color.PURPLE + msg + Color.END)
 
 
 def fa_chars(s):
@@ -224,9 +231,11 @@ def reformat_file(cmd, file_path, org_dir, options):
         un = ''
         uni = 1
         while os.path.exists(os.path.join(org_dir, relative_filepath_we + un + '.' + ext)):
+            error('[DUPLICATE] file with same name exists: {}'.format(os.path.join(org_dir, relative_filepath_we + un + '.' + ext)))
             un = '-' + str(uni)
             uni += 1
         relative_filepath_we += un
+            
 
     new_filepath = os.path.join(org_dir, relative_filepath_we + '.' + ext)
     new_dir, new_filename = os.path.split(new_filepath)
@@ -283,6 +292,7 @@ def main():
     parser.add_argument('--jalali', dest='jalali', action='store_true', help="convert dates to Persian (use Persian dates in organized file names)")
     parser.add_argument('--chars', dest='chars', default='en', choices=['fa', 'en'], help="use Fa/En characters for digits in file names (default: en)")
     parser.add_argument('--dry-run', dest='dry_run', action='store_true', help="do not copy or move files. just print what will happen")
+    parser.add_argument('--verbose', dest='verbose', action='store_true', help="print info messages")
     parser.add_argument('--pattern', metavar="PATTERN", dest='pattern', nargs='?',
         default=DEFAULT_PATTERN,
         help="use PATTERN for file paths\ndefault: \"{}\"\nexample: \"{}\"".format(DEFAULT_PATTERN, EXAMPLE_PATTERN))
@@ -290,6 +300,7 @@ def main():
     parser.add_argument('target', metavar="TARGET", default=".", help="file or folder to be organized")
     parser.add_argument('org_dir', metavar="ORG_DIR", default=".", help="folder to save organized files")
     
+    global args
     args = parser.parse_args()
 
     if not os.path.exists(args.target):
@@ -308,6 +319,8 @@ def main():
     }
 
     reformat_dir(args.cmd, args.target, args.org_dir, options)
+    
+    print('Done!')
 
 
 if __name__ == '__main__':
