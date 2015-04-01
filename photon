@@ -160,11 +160,11 @@ def reformat_file(cmd, file_path, org_dir, options):
 
     filename = os.path.split(file_path)[-1]
     filename_we, ext = os.path.splitext(filename)
-    ext = ext[1:]
+    ext = ext[1:].lower()
 
-    if ext.lower() in IMAGE_FORMATS:
+    if ext in IMAGE_FORMATS:
         file_type = 'Image'
-    elif ext.lower() in VIDEO_FORMATS:
+    elif ext in VIDEO_FORMATS:
         file_type = 'Video'
     else:
         error('✗ {}: FAILED: invalid file extension: "{}". Nothing done... '.format(file_path, ext))
@@ -282,7 +282,7 @@ def reformat_file(cmd, file_path, org_dir, options):
             else:
                 error("Wrong command. (This never happens.)")
                 return
-        if ext.lower() in VIDEO_FORMATS and options['video_placeholder']:
+        if ext in VIDEO_FORMATS and options['video_placeholder']:
             placeholder_path = os.path.join(org_dir, relative_filepath_we + PHOTON_PLACEHOLDER)
             if not os.path.exists(placeholder_path):
                 if not options['dry_run']:
@@ -290,7 +290,7 @@ def reformat_file(cmd, file_path, org_dir, options):
                     info2('✔ {} created'.format(placeholder_path))
                 else:
                     info2('✔ [DRY-RUN] {} will be created'.format(placeholder_path))
-        if not ext.lower() in VIDEO_FORMATS and options['max_size']:
+        if not ext in VIDEO_FORMATS and options['max_size']:
             if not options['dry_run']:
                 sh.convert(new_filepath, "-resize", options['max_size']+">" , new_filepath)
                 info2('✔ {} resized to {}'.format(new_filepath, options['max_size']))
