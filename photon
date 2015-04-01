@@ -54,7 +54,7 @@ Warning:
 
 I use:
 
-    photon mv --jalali --chars fa --pattern "{y}/{m} - {M}/{y}-{m}-{d} {h}:{mi}:{s}" SRC DES
+    photon mv --jalali --chars fa --pattern "{y}/{m} - {M}/{t}{y}-{m}-{d} {h}-{mi}-{s}" --max-size 2000 SRC DES
 
 '''
 
@@ -64,9 +64,10 @@ import shutil
 import re
 import jalali as jalali_py
 import argparse
+import sh
 from PIL import Image, ImageDraw, ImageFont
 from PIL.ExifTags import TAGS
-from datetime import datetime
+from datetime import datetime, timedelta
 
 photon_dir = os.path.dirname(__file__)
 args = None
@@ -91,7 +92,7 @@ EXAMPLE_PATTERN = "{y}/{m} - {M}/{y}-{m}-{d} {h}:{mi}:{s}"
 PHOTON_PLACEHOLDER = ' PHOTON-VIDEO-PLACEHOLDER.jpg'
 
 VIDEO_FORMATS = ['mp4', 'avi', '3gp', 'mpeg', 'mkv', 'wmv', ]
-IMAGE_FORMATS = ['jpg', 'jpeg', 'png', ]
+IMAGE_FORMATS = ['jpg', 'jpeg', 'png', 'gif', ]
 ALL_FORMATS = VIDEO_FORMATS + IMAGE_FORMATS
 
 
@@ -161,9 +162,14 @@ def reformat_file(cmd, file_path, org_dir, options):
     filename_we, ext = os.path.splitext(filename)
     ext = ext[1:]
 
-    if ext.lower() not in ALL_FORMATS:
+    if ext.lower() in IMAGE_FORMATS:
+        file_type = 'Image'
+    elif ext.lower() in VIDEO_FORMATS:
+        file_type = 'Video'
+    else:
         error('✗ {}: FAILED: invalid file extension: "{}". Nothing done... '.format(file_path, ext))
         return
+
 
     if filename.endswith(PHOTON_PLACEHOLDER):
         if cmd == 'mv':
@@ -180,7 +186,10 @@ def reformat_file(cmd, file_path, org_dir, options):
     m = re.match(pattern, filename_we)
     if not m:    
         # second try: use exif metadata of photo
-        m = re.match(pattern, get_exif_datetime(file_path))
+        try:
+            m = re.match(pattern, get_exif_datetime(file_path))
+        except AttributeError:
+            m = None
         if not m:
             # third try: get file modify time from os
             m = re.match(pattern, str(datetime.fromtimestamp(os.path.getmtime(file_path))))
@@ -194,6 +203,16 @@ def reformat_file(cmd, file_path, org_dir, options):
     hour = int(m.group(4))
     minute = int(m.group(5))
     second = int(m.group(6))
+
+    #dt = datetime(year, month, day, hour, minute, second)
+    #td = timedelta(days=27)
+    #dt += td
+    #year = dt.year
+    #month = dt.month
+    #day = dt.day
+    #hour = dt.hour
+    #minute = dt.minute
+    #second = dt.second
 
     if options['jalali'] and year > 1900:
         # convert to Persian date
@@ -224,17 +243,17 @@ def reformat_file(cmd, file_path, org_dir, options):
         h=hour,
         mi=minute,
         s=second,
-        original_name=filename_we
+        original_name=filename_we,
+        t= 'Videos/' if file_type == 'Video' else ''
     )
 
-    if file_path != os.path.join(org_dir, relative_filepath_we + '.' + ext):
-        un = ''
-        uni = 1
-        while os.path.exists(os.path.join(org_dir, relative_filepath_we + un + '.' + ext)):
-            error('[DUPLICATE] file with same name exists: {}'.format(os.path.join(org_dir, relative_filepath_we + un + '.' + ext)))
-            un = '-' + str(uni)
-            uni += 1
-        relative_filepath_we += un
+    un = ''
+    uni = 1
+    while file_path != os.path.join(org_dir, relative_filepath_we + un + '.' + ext) and os.path.exists(os.path.join(org_dir, relative_filepath_we + un + '.' + ext)):
+        error('[DUPLICATE] file with same name exists: {}'.format(os.path.join(org_dir, relative_filepath_we + un + '.' + ext)))
+        un = '-' + str(uni)
+        uni += 1
+    relative_filepath_we += un
             
 
     new_filepath = os.path.join(org_dir, relative_filepath_we + '.' + ext)
@@ -263,7 +282,7 @@ def reformat_file(cmd, file_path, org_dir, options):
             else:
                 error("Wrong command. (This never happens.)")
                 return
-        if ext.lower() in VIDEO_FORMATS:
+        if ext.lower() in VIDEO_FORMATS and options['video_placeholder']:
             placeholder_path = os.path.join(org_dir, relative_filepath_we + PHOTON_PLACEHOLDER)
             if not os.path.exists(placeholder_path):
                 if not options['dry_run']:
@@ -271,6 +290,12 @@ def reformat_file(cmd, file_path, org_dir, options):
                     info2('✔ {} created'.format(placeholder_path))
                 else:
                     info2('✔ [DRY-RUN] {} will be created'.format(placeholder_path))
+        if not ext.lower() in VIDEO_FORMATS and options['max_size']:
+            if not options['dry_run']:
+                sh.convert(new_filepath, "-resize", options['max_size']+">" , new_filepath)
+                info2('✔ {} resized to {}'.format(new_filepath, options['max_size']))
+            else:
+                info2('✔ [DRY-RUN] {} will be resized to {}'.format(new_filepath, options['max_size']))
     except PermissionError:
         error('✗ {}: FAILED: Permission Denied'.format(file_path))
         return
@@ -290,7 +315,9 @@ def reformat_dir(cmd, path, org_dir, options):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--jalali', dest='jalali', action='store_true', help="convert dates to Persian (use Persian dates in organized file names)")
+    parser.add_argument('--video-placeholder', dest='video_placeholder', action='store_true', help="create a placeholder image for videos")
     parser.add_argument('--chars', dest='chars', default='en', choices=['fa', 'en'], help="use Fa/En characters for digits in file names (default: en)")
+    parser.add_argument('--max-size', metavar="MAX_SIZE", dest='max_size', default=None, nargs='?', help="maximum size of images")
     parser.add_argument('--dry-run', dest='dry_run', action='store_true', help="do not copy or move files. just print what will happen")
     parser.add_argument('--verbose', dest='verbose', action='store_true', help="print info messages")
     parser.add_argument('--pattern', metavar="PATTERN", dest='pattern', nargs='?',
@@ -316,6 +343,8 @@ def main():
         'chars': args.chars,
         'dry_run': args.dry_run,
         'pattern': args.pattern,
+        'max_size': args.max_size,
+        'video_placeholder': args.video_placeholder,
     }
 
     reformat_dir(args.cmd, args.target, args.org_dir, options)

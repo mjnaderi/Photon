@@ -113,9 +113,11 @@ If you want to **recursively move** files instead of copying, run:
 
 Above commands use the default pattern for file paths (`{y}/{m} - {M}/{original_name}`).
 You can use any pattern you wish. e.g. `{y}/{M}/{y}-{m}-{d} {h}:{mi}:{s}`. Note that this
-pattern renames file names to `{y}-{m}-{d} {h}:{mi}:{s}`. I, personally use this command:
+pattern renames file names to `{y}-{m}-{d} {h}:{mi}:{s}`.
 
-    photon mv new_photos organized_photos --jalali --chars fa --pattern "{y}/{m} - {M}/{y}-{m}-{d} {h}:{mi}:{s}"
+An example: 
+
+    photon mv new_photos organized_photos --jalali --chars fa --pattern "{y}/{m} - {M}/{y}-{m}-{d} {h}-{mi}-{s}"
 
 
 Usage
