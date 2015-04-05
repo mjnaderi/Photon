@@ -91,7 +91,7 @@ EXAMPLE_PATTERN = "{y}/{m} - {M}/{y}-{m}-{d} {h}:{mi}:{s}"
 
 PHOTON_PLACEHOLDER = ' PHOTON-VIDEO-PLACEHOLDER.jpg'
 
-VIDEO_FORMATS = ['mp4', 'avi', '3gp', 'mpeg', 'mkv', 'wmv', ]
+VIDEO_FORMATS = ['mp4', 'avi', '3gp', 'mpeg', 'mkv', 'wmv', 'mov']
 IMAGE_FORMATS = ['jpg', 'jpeg', 'png', 'gif', ]
 ALL_FORMATS = VIDEO_FORMATS + IMAGE_FORMATS
 
